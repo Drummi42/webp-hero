@@ -53,43 +53,49 @@ export class WebpMachine {
 	/**
 	 * Polyfill the webp format on the given <img> element
 	 */
-	async polyfillImage(image: HTMLImageElement): Promise<void> {
+	async polyfillImage(image: Element, attributes:Array<string> = ['src']): Promise<void> {
 		if (await this.webpSupport) return
-		const {src} = image
-		if (/\.webp$/i.test(src)) {
-			if (this.cache[src]) {
-				image.src = this.cache[src]
-				return
-			}
-			try {
-				const webpData = await loadBinaryData(src)
-				const pngData = await this.decode(webpData)
-				image.src = this.cache[src] = pngData
-			}
-			catch (error) {
-				error.name = WebpMachineError.name
-				error.message = `failed to polyfill image "${src}": ${error.message}`
-				throw error
-			}
+
+		for(let i = 0; i < attributes.length; i++) {
+            const src = image.getAttribute(attributes[i])
+
+            if (/\.webp$/i.test(src)) {
+            	if (this.cache[src]) {
+            		image.setAttribute(attributes[i],this.cache[src])
+					return
+            	}
+            	try {
+            		const webpData = await loadBinaryData(src)
+					const pngData = await this.decode(webpData)
+					this.cache[src] = pngData
+					image.setAttribute(attributes[i], pngData)
+            	}
+            	catch (error) {
+            		error.name = WebpMachineError.name
+					error.message = `failed to polyfill image "${src}": ${error.message}`
+					throw error
+            	}
+            }
 		}
 	}
 
 	/**
 	 * Polyfill webp format on the entire web page
 	 */
-	async polyfillDocument({
-		document = window.document
-	}: PolyfillDocumentOptions = {}): Promise<void> {
+	async polyfillDocument(tags: Array<string> = ['img'], attributes:Array<string> = ['src'], {document = window.document}: PolyfillDocumentOptions = {}): Promise<void> {
 		if (await this.webpSupport) return null
-		for (const image of Array.from(document.querySelectorAll("img"))) {
-			try {
-				await this.polyfillImage(image)
-			}
-			catch (error) {
-				error.name = WebpMachineError.name
-				error.message = `webp image polyfill failed for url "${image.src}": ${error}`
-				throw error
-			}
-		}
+
+        for(let i = 0; i<tags.length; i++) {
+            for(const image of Array.from(document.querySelectorAll(tags[i]))){
+                try {
+                    await this.polyfillImage(image, attributes)
+                }
+                catch (error) {
+                    error.name = WebpMachineError.name
+                    error.message = `webp image polyfill failed for image "${image}": ${error}`
+                    throw error
+                }
+            }
+        }
 	}
 }

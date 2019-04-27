@@ -1,4 +1,3 @@
 
-/dist
-/dist-cjs
+.idea
 /node_modules
